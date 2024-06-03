@@ -4,147 +4,171 @@
 
 using namespace std;
 
-bool isOperator(char token)
+class ExpressionCalculator
 {
-    const char operators[]{'^', '*', '/', '+', '-'};
-    for (auto &op : operators)
-        if (token == op)
-            return true;
-    return false;
-}
+private:
+    stack<string> postfix;
+    string errorMessage;
 
-inline bool isNumber(const char &n)
-{
-    return n >= '0' and n <= '9';
-}
-
-int val(char op)
-{
-    switch (op)
+    void infixToPostfix(string &s)
     {
-    case '^':
-        return 3;
-    case '*':
-    case '/':
-        return 2;
-    case '+':
-    case '-':
-        return 1;
-    default:
-        cerr << "Invalid operator!\n";
-        exit(-99);
-    }
-}
+        stack<char> operators;
+        stack<string> revPostfix;
+        string token, op;
+        int i = 0;
 
-stack<string> infixToPostfix(string &s)
-{
-    stack<char> operators;
-    stack<string> revPostfix, answer;
-    string token, op;
-    int i = 0;
-
-    while (i < (int)s.length())
-    {
-        token.clear();
-        while (s[i] == ' ')
-            i++;
-
-        if (isNumber(s[i]))
+        while (i < (int)s.length())
         {
-            while (isNumber(s[i]) or s[i] == '.')
-                token += s[i++];
-            revPostfix.push(token);
-        }
-        else if (isOperator(s[i]))
-        {
-            token = s[i++];
-            int precedence = val(token[0]);
+            token.clear();
+            while (s[i] == ' ')
+                i++;
 
-            while (!operators.empty() and precedence <= val(operators.top()))
-                op = operators.top(), revPostfix.push(op), operators.pop();
-
-            operators.push(token[0]);
-        }
-        else
-        {
-            cerr << "Invalid expression!\n";
-            exit(-99);
-        }
-    }
-    while (!operators.empty())
-        op = operators.top(), revPostfix.push(op), operators.pop();
-    while (!revPostfix.empty())
-        answer.push(revPostfix.top()), revPostfix.pop();
-    return answer;
-}
-
-double evaluate(double lhs, char op, double rhs)
-{
-    switch (op)
-    {
-    case '^':
-        return (double)pow(lhs, rhs);
-    case '*':
-        return lhs * rhs;
-    case '/':
-        return lhs / rhs;
-    case '+':
-        return lhs + rhs;
-    case '-':
-        return lhs - rhs;
-    default:
-        cerr << "wrong operator!\n";
-        exit(-99);
-    }
-}
-
-double calculateExpr(stack<string> &postfix)
-{
-    stack<double> t;
-    while (!postfix.empty())
-    {
-        auto token = postfix.top();
-        postfix.pop();
-
-        if (isOperator(token.back()))
-        {
-            if (t.size() < 2)
+            if (isNumber(s[i]))
             {
-                cerr << "Invalid expression!\n";
-                exit(-99);
+                while (isNumber(s[i]) or s[i] == '.')
+                    token += s[i++];
+                revPostfix.push(token);
             }
+            else if (isOperator(s[i]))
+            {
+                token = s[i++];
+                int precedence = val(token[0]);
 
-            double rhs = t.top();
-            t.pop();
-            double lhs = t.top();
-            t.pop();
-            t.push(evaluate(lhs, token[0], rhs));
+                while (!operators.empty() and precedence <= val(operators.top()))
+                    op = operators.top(), revPostfix.push(op), operators.pop();
+
+                operators.push(token[0]);
+            }
+            else
+            {
+                errorMessage = "Invalid operator { ";
+                errorMessage.push_back(s[i]), errorMessage.append(" }!\n");
+                throw runtime_error(errorMessage);
+            }
         }
-        else
-            t.push(stod(token));
+        while (!operators.empty())
+            op = operators.top(), revPostfix.push(op), operators.pop();
+        while (!revPostfix.empty())
+            postfix.push(revPostfix.top()), revPostfix.pop();
     }
-    if (t.empty())
-        cerr << "Wrong expression!\n";
-    return t.top();
-}
 
-void formatPrint(const string &infix)
-{
-    for (int i = 0; i < (int)infix.length(); ++i)
+    long double evaluate(long double lhs, char op, long double rhs) const
     {
-        if (infix[i] == ' ')
-            continue;
-        else if (isOperator(infix[i]))
-            cout << infix[i] << ' ';
-        else
+        switch (op)
         {
-            cout << infix[i];
-            if (i + 1 < (int)infix.length() and !isNumber(infix[i + 1]) and infix[i + 1] != '.')
-                cout << ' ';
+        case '^':
+            return (long double)pow(lhs, rhs);
+        case '*':
+            return lhs * rhs;
+        case '/':
+            return lhs / rhs;
+        case '+':
+            return lhs + rhs;
+        case '-':
+            return lhs - rhs;
+        default:
+            throw runtime_error("Invalid operator!\n");
         }
     }
-    cout << " = ";
-}
+
+    long double calculateExpr(stack<string> &postfix)
+    {
+        stack<long double> t;
+        while (!postfix.empty())
+        {
+            auto token = postfix.top();
+            postfix.pop();
+
+            if (isOperator(token.back()))
+            {
+                if (t.size() < 2)
+                {
+                    string errorMessage = "No enough operands for operator { ";
+                    errorMessage.push_back(token.back()), errorMessage.append(" }!\n");
+                    throw runtime_error(errorMessage);
+                }
+
+                long double rhs = t.top();
+                t.pop();
+                long double lhs = t.top();
+                t.pop();
+                t.push(evaluate(lhs, token[0], rhs));
+            }
+            else
+                t.push(stod(token));
+        }
+        if (t.empty())
+            throw runtime_error("Invalid expression!\n");
+        return t.top();
+    }
+
+    int val(char op) const
+    {
+        switch (op)
+        {
+        case '^':
+            return 3;
+        case '*':
+        case '/':
+            return 2;
+        case '+':
+        case '-':
+            return 1;
+        default:
+            throw runtime_error("Invalid operator!\n");
+        }
+    }
+
+    bool isOperator(char token) const
+    {
+        const char operators[]{'^', '*', '/', '+', '-'};
+        for (auto &op : operators)
+            if (token == op)
+                return true;
+        return false;
+    }
+
+    inline bool isNumber(const char &n) const
+    {
+        return n >= '0' and n <= '9';
+    }
+
+public:
+    ExpressionCalculator() = default;
+
+    ExpressionCalculator(string &infix)
+    {
+        calculate(infix);
+    }
+
+    void calculate(string &infix)
+    {
+        infixToPostfix(infix);
+    }
+
+    long double getAnswer()
+    {
+        return calculateExpr(postfix);
+    }
+
+    void formatPrint(const string &infix) const
+    {
+        for (int i = 0; i < (int)infix.length(); ++i)
+        {
+            if (infix[i] == ' ')
+                continue;
+            else if (isOperator(infix[i]))
+                cout << infix[i] << ' ';
+            else
+            {
+                cout << infix[i];
+                if (i + 1 < (int)infix.length() and !isNumber(infix[i + 1]) and infix[i + 1] != '.')
+                    cout << ' ';
+            }
+        }
+        cout << " = ";
+    }
+};
 
 int main()
 {
@@ -153,9 +177,11 @@ int main()
     getline(cin, infix);
     cout << '\n';
 
-    auto postfix = infixToPostfix(infix);
+    ExpressionCalculator calculator;
 
-    formatPrint(infix);
+    calculator.calculate(infix);
 
-    cout << calculateExpr(postfix);
+    calculator.formatPrint(infix);
+
+    cout << calculator.getAnswer() << '\n';
 }
